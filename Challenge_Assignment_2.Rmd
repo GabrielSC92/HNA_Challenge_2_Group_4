@@ -32,7 +32,7 @@ distances(Highschool,
           mode = c("all", "out", "in"), 
           weights = NULL) 
 
-#Shortest path lengths between every pair of two nodes in the network You can consider to use histogram with percentile to study the shortest path lengths and the degree distribution:
+# Shortest path lengths between every pair of two nodes in the network
 ```
 
 You can consider to use histogram with percentile to study the shortest path lengths and the degree distribution:
