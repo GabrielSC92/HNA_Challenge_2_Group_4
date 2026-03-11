@@ -25,7 +25,7 @@ In addition to the Facebook network you have used in the Learning-based exercise
 
 You can calculate the shortest path lengths between every pair of two nodes using igraph package:
 
-``` R
+``` {r example-igraph, include=F}
 distances(Highschool, 
           v = V(Highschool), 
           to = V(Highschool), 
