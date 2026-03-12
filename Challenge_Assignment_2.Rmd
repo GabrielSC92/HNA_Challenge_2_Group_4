@@ -17,6 +17,63 @@ In addition to the Facebook network you have used in the Learning-based exercise
 
 [Download the “Highschool_network_att.csv”, “Highschool_network_att.csv”, and “LargeFacebook_network_att.csv”, and “LargeFacebook_network_edge.csv” from BrightSpace. Import the `.csv` data into `R` and build the two networks.]{.underline}
 
+```{r}
+library(igraph)
+library(RColorBrewer)
+library(visNetwork)
+```
+
+```{r}
+# Highschool network
+Highschool_edge <- read.csv("data/Highschool_network_edge.csv", header = FALSE)
+Highschool_att <- read.csv("data/Highschool_network_att.csv", header = TRUE)
+
+Highschool_nodes <- data.frame(
+  name = as.character(Highschool_att$NodeID),
+  gender = as.character(Highschool_att$Gender),
+  hall = as.character(Highschool_att$Hall)
+)
+
+Highschool_edges <- data.frame(
+  from = as.character(Highschool_edge[,1]),
+  to   = as.character(Highschool_edge[,2])
+)
+
+Highschool <- graph_from_data_frame(
+  Highschool_edges,
+  directed = FALSE,
+  vertices = Highschool_nodes
+)
+
+summary(Highschool)
+plot(Highschool)
+```
+
+```{r}
+# Large Facebook network
+LargeFacebook_edge <- read.csv("data/LargeFacebook_network_edge.csv", header = FALSE)
+LargeFacebook_att <- read.csv("data/LargeFacebook_network_att.csv", header = TRUE)
+
+LargeFacebook_nodes <- data.frame(
+  name = as.character(LargeFacebook_att$NodeID)
+)
+
+LargeFacebook_edges <- data.frame(
+  from = as.character(LargeFacebook_edge[,1]),
+  to   = as.character(LargeFacebook_edge[,2])
+)
+
+LargeFacebook <- graph_from_data_frame(
+  LargeFacebook_edges,
+  directed = FALSE,
+  vertices = LargeFacebook_nodes
+)
+
+summary(LargeFacebook)
+
+plot(LargeFacebook)
+```
+
 ## Question 1 (3 points): 
 
 -   [For both the High-school and Facebook networks, calculate the shortest path lengths between every pair of two nodes. How many percentage of nodes can be reached within 6 path lengths? Does “six degree of separation” apply to each network?]{.underline}
@@ -35,6 +92,161 @@ distances(Highschool,
 # Shortest path lengths between every pair of two nodes in the network
 ```
 
+```{r}
+# Shortest path matrix Highschool
+
+dist_highschool <- distances(
+  Highschool,
+  v = V(Highschool),
+  to = V(Highschool),
+  mode = "all",
+  weights = NULL
+)
+
+# Convert to vector and remove self-distances
+dist_high_vec <- dist_highschool[dist_highschool != 0]
+
+# Percentage within 6 steps
+mean(dist_high_vec <= 6) * 100
+```
+
+```{r}
+# Shortest path matrix LargeFacebook
+
+dist_facebook <- distances(
+  LargeFacebook,
+  v = V(LargeFacebook),
+  to = V(LargeFacebook),
+  mode = "all",
+  weights = NULL
+)
+
+dist_fb_vec <- dist_facebook[dist_facebook != 0]
+
+mean(dist_fb_vec <= 6) * 100
+```
+
+```{r}
+par(mfrow=c(1,2))
+
+hist(dist_high_vec,
+     breaks=20,
+     main="Highschool network",
+     xlab="Shortest path length")
+
+hist(dist_fb_vec,
+     breaks=20,
+     main="Facebook network",
+     xlab="Shortest path length")
+```
+
+Highschool network:(~1.5%)
+Most shortest paths are around 3–5 steps
+Very few exceed 6
+Maximum is around 7–8
+
+Facebook network:(~2%)
+Most shortest paths are around 3–4 steps
+Almost all nodes are reachable within ≤6 steps
+
+Conclusion:
+The six degrees of separation hypothesis holds for both networks, since the vast majority of node pairs can reach each other within 6 steps or fewer.
+
 You can consider to use histogram with percentile to study the shortest path lengths and the degree distribution:
 
 ![One important stand of community detection algorithm is based on [***modularity***]{.underline}, which tries to maximize the difference between the actual number of edges in a community and the expected number of edges in the community. However, optimizing modularity in a network is NP-hard, therefore have to use heuristics.](images/clipboard-4108311466.png)
+
+```{r}
+deg_high <- degree(Highschool)
+deg_fb <- degree(LargeFacebook)
+
+par(mfrow=c(1,2))
+
+hist(deg_high,
+     breaks=20,
+     main="Highschool degree distribution",
+     xlab="Degree")
+
+hist(deg_fb,
+     breaks=20,
+     main="Facebook degree distribution",
+     xlab="Degree")
+```
+
+## Degree Distribution
+
+The degree distributions are quiet different. In the Highschool network, the degree distribution is relatively narrow and moderately right-skewed: most nodes have between about 3 and 8 connections, and the highest degrees are around 15–17. These nodes have more connections than others but do not dominate the network strongly. In contrast, the Facebook network shows a highly right-skewed distribution where most nodes have few connections while a small number of nodes have high degrees (around 200). These highly connected nodes act as stronger hubs. Because such hubs connect many otherwise distant nodes, they reduce the shortest path lengths in the Facebook network and help explain why most node pairs can be reached within six steps.
+
+## Degree Distribution & Shortest Path Lengths
+
+More on the connection between degree dist. and shortest path lengths:
+The degree distribution helps explain the degree of separation observed earlier. In the Facebook network, high-degree hubs connect many nodes across the network, creating shortcuts that reduce the number of steps needed to connect two individuals. As a result, most nodes can be reached within six steps. In the Highschool network, degrees are more evenly distributed and hubs are weaker, so paths rely more on connections of intermediate nodes. Nevertheless, because the network is relatively small, most nodes are still reachable within six steps.
+
+# Exercise 2
+
+```{r}
+#community by gender
+genderCommunity <- Highschool_nodes$gender
+genderCommunity <- replace(genderCommunity, genderCommunity == "female", 1)
+genderCommunity <- replace(genderCommunity, genderCommunity == "male", 2)
+genderCommunity <- replace(genderCommunity, genderCommunity == "unknown", 3)
+genderCommunity <- as.numeric(genderCommunity)
+
+gender.clustering <- make_clusters(Highschool, membership = genderCommunity)
+mod_gender <- modularity(gender.clustering)
+```
+
+```{r}
+#community by residential hall
+hallCommunity <- as.factor(Highschool_nodes$hall)
+hallCommunity <- as.numeric(hallCommunity)
+
+hall.clustering <- make_clusters(Highschool, membership = hallCommunity)
+mod_hall <- modularity(hall.clustering)
+```
+
+```{r}
+#Louvain algorithm
+Louv <- cluster_louvain(Highschool)
+mod_louv <- modularity(Louv)
+```
+
+```{r}
+data.frame(
+  method = c("Gender", "Residential Hall", "Louvain"),
+  modularity = c(mod_gender, mod_hall, mod_louv)
+)
+```
+
+```{r}
+plot(
+  Louv,
+  Highschool,
+  layout = layout_with_fr(Highschool),
+  vertex.size = 6,
+  vertex.label = NA,
+  edge.color = "gray",
+  mark.groups = communities(Louv),
+  main = "Louvain communities in the Highschool network"
+)
+```
+
+## Modularity based on gender and residential hall:
+
+The modularity when communities are defined by gender is extremely low (≈0.00005). This indicates that friendships in the Highschool network are not strongly structured by gender, meaning male and female students are frequently connected to each other rather than forming separate groups.
+
+When communities are defined by residential hall, the modularity is higher (≈0.176). This suggests that students are somewhat more likely to form friendships with others who live in the same residential hall. However, the value is still relatively moderate, meaning hall membership only partially explains the friendship structure.
+
+## Louvain community detection
+
+The Louvain algorithm produces a much higher modularity value (≈0.701). This indicates that the communities detected by Louvain align much more closely with the actual structure of the network.
+
+The reason for this difference is that gender and residential hall are predefined attributes, while the Louvain algorithm optimizes modularity directly by grouping nodes based on their connection patterns. As a result, Louvain identifies communities that better reflect the underlying social structure of friendships rather than relying on a single external attribute.
+
+The Louvain plot shows several densely connected clusters with relatively fewer connections between clusters. These clusters likely represent groups of students who interact frequently, such as friend circles, shared activities, or overlapping social groups, which are not perfectly captured by gender or residential hall alone.
+
+## Key takeaways:
+
+Gender explains almost none of the network structure(0.00005 modularity).
+Residential hall explains some of it(0.176 modularity).
+Louvain finds the strongest community structure because it optimizes modularity using the network topology itself(0.701 modularity).
