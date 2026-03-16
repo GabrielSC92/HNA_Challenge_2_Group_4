@@ -155,17 +155,15 @@ hist(dist_fb_vec,
      xlab="Shortest path length")
 ```
 
-Highschool network:(~1.5%)
-Most shortest paths are around 3–5 steps
-Very few exceed 6
-Maximum is around 7–8
+**Highschool network:** ~98.6% of node pairs can be reached within 6 path lengths.
+- Most shortest paths are around 3–5 steps.
+- Very few exceed 6; maximum is around 7–8.
 
-Facebook network:(~2%)
-Most shortest paths are around 3–4 steps
-Almost all nodes are reachable within ≤6 steps
+**Facebook network:** ~98.0% of node pairs can be reached within 6 path lengths.
+- Most shortest paths are around 3–4 steps.
+- Almost all nodes are reachable within ≤6 steps.
 
-Conclusion:
-The six degrees of separation hypothesis holds for both networks, since the vast majority of node pairs can reach each other within 6 steps or fewer.
+**Conclusion:** The six degrees of separation hypothesis holds for both networks, since the vast majority of node pairs can reach each other within 6 steps or fewer.
 
 You can consider to use histogram with percentile to study the shortest path lengths and the degree distribution:
 
@@ -190,7 +188,7 @@ hist(deg_fb,
 
 ## Degree Distribution
 
-The degree distributions are quiet different. In the Highschool network, the degree distribution is relatively narrow and moderately right-skewed: most nodes have between about 3 and 8 connections, and the highest degrees are around 15–17. These nodes have more connections than others but do not dominate the network strongly. In contrast, the Facebook network shows a highly right-skewed distribution where most nodes have few connections while a small number of nodes have high degrees (around 200). These highly connected nodes act as stronger hubs. Because such hubs connect many otherwise distant nodes, they reduce the shortest path lengths in the Facebook network and help explain why most node pairs can be reached within six steps.
+The degree distributions are quite different. In the Highschool network, the degree distribution is relatively narrow and moderately right-skewed: most nodes have between about 3 and 8 connections, and the highest degrees are around 15–17. These nodes have more connections than others but do not dominate the network strongly. In contrast, the Facebook network shows a highly right-skewed distribution where most nodes have few connections while a small number of nodes have high degrees (around 200). These highly connected nodes act as stronger hubs. Because such hubs connect many otherwise distant nodes, they reduce the shortest path lengths in the Facebook network and help explain why most node pairs can be reached within six steps.
 
 ## Degree Distribution & Shortest Path Lengths
 
