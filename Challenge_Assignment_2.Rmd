@@ -2,7 +2,22 @@
 title: "Untitled"
 author: "Gabriel Silva Cheinquer (4266390), Ege Basaran (8787433)"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  pdf_document:
+    toc: true
+    number_sections: false
+    fig_width: 6
+    fig_height: 5
+    latex_engine: xelatex
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: flatly
+    highlight: tango
+    code_folding: hide
+    fig_width: 10
+    fig_height: 6
 ---
 
 ```{r setup, include=FALSE}
@@ -17,13 +32,13 @@ In addition to the Facebook network you have used in the Learning-based exercise
 
 [Download the “Highschool_network_att.csv”, “Highschool_network_att.csv”, and “LargeFacebook_network_att.csv”, and “LargeFacebook_network_edge.csv” from BrightSpace. Import the `.csv` data into `R` and build the two networks.]{.underline}
 
-```{r}
+```{r imports}
 library(igraph)
 library(RColorBrewer)
 library(visNetwork)
 ```
 
-```{r}
+```{r download-data-highschool}
 # Highschool network
 Highschool_edge <- read.csv("data/Highschool_network_edge.csv", header = FALSE)
 Highschool_att <- read.csv("data/Highschool_network_att.csv", header = TRUE)
@@ -49,7 +64,7 @@ summary(Highschool)
 plot(Highschool)
 ```
 
-```{r}
+```{r download-data-facebook}
 # Large Facebook network
 LargeFacebook_edge <- read.csv("data/LargeFacebook_network_edge.csv", header = FALSE)
 LargeFacebook_att <- read.csv("data/LargeFacebook_network_att.csv", header = TRUE)
@@ -92,7 +107,7 @@ distances(Highschool,
 # Shortest path lengths between every pair of two nodes in the network
 ```
 
-```{r}
+```{r shortest-path-highschool}
 # Shortest path matrix Highschool
 
 dist_highschool <- distances(
@@ -110,7 +125,7 @@ dist_high_vec <- dist_highschool[dist_highschool != 0]
 mean(dist_high_vec <= 6) * 100
 ```
 
-```{r}
+```{r shortest-path-facebook}
 # Shortest path matrix LargeFacebook
 
 dist_facebook <- distances(
@@ -126,7 +141,7 @@ dist_fb_vec <- dist_facebook[dist_facebook != 0]
 mean(dist_fb_vec <= 6) * 100
 ```
 
-```{r}
+```{r histograms}
 par(mfrow=c(1,2))
 
 hist(dist_high_vec,
@@ -156,7 +171,7 @@ You can consider to use histogram with percentile to study the shortest path len
 
 ![One important stand of community detection algorithm is based on [***modularity***]{.underline}, which tries to maximize the difference between the actual number of edges in a community and the expected number of edges in the community. However, optimizing modularity in a network is NP-hard, therefore have to use heuristics.](images/clipboard-4108311466.png)
 
-```{r}
+```{r degrees-separation-dist}
 deg_high <- degree(Highschool)
 deg_fb <- degree(LargeFacebook)
 
@@ -184,7 +199,7 @@ The degree distribution helps explain the degree of separation observed earlier.
 
 # Exercise 2
 
-```{r}
+```{r nodes-gender}
 #community by gender
 genderCommunity <- Highschool_nodes$gender
 genderCommunity <- replace(genderCommunity, genderCommunity == "female", 1)
@@ -196,7 +211,7 @@ gender.clustering <- make_clusters(Highschool, membership = genderCommunity)
 mod_gender <- modularity(gender.clustering)
 ```
 
-```{r}
+```{r community-res-hall}
 #community by residential hall
 hallCommunity <- as.factor(Highschool_nodes$hall)
 hallCommunity <- as.numeric(hallCommunity)
@@ -205,20 +220,20 @@ hall.clustering <- make_clusters(Highschool, membership = hallCommunity)
 mod_hall <- modularity(hall.clustering)
 ```
 
-```{r}
+```{r louvain}
 #Louvain algorithm
 Louv <- cluster_louvain(Highschool)
 mod_louv <- modularity(Louv)
 ```
 
-```{r}
+```{r louvain-df}
 data.frame(
   method = c("Gender", "Residential Hall", "Louvain"),
   modularity = c(mod_gender, mod_hall, mod_louv)
 )
 ```
 
-```{r}
+```{r plot-louvain-highschool}
 plot(
   Louv,
   Highschool,
