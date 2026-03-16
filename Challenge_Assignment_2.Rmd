@@ -3,12 +3,6 @@ title: "Untitled"
 author: "Gabriel Silva Cheinquer (4266390), Ege Basaran (8787433)"
 date: "`r Sys.Date()`"
 output:
-  pdf_document:
-    toc: true
-    number_sections: false
-    fig_width: 6
-    fig_height: 5
-    latex_engine: xelatex
   html_document:
     toc: true
     toc_float: true
@@ -18,6 +12,12 @@ output:
     code_folding: hide
     fig_width: 10
     fig_height: 6
+  pdf_document:
+    toc: true
+    number_sections: false
+    fig_width: 6
+    fig_height: 5
+    latex_engine: xelatex
 ---
 
 ```{r setup, include=FALSE}
@@ -38,7 +38,7 @@ library(RColorBrewer)
 library(visNetwork)
 ```
 
-```{r download-data-highschool}
+```{r data-highschool}
 # Highschool network
 Highschool_edge <- read.csv("data/Highschool_network_edge.csv", header = FALSE)
 Highschool_att <- read.csv("data/Highschool_network_att.csv", header = TRUE)
@@ -64,7 +64,7 @@ summary(Highschool)
 plot(Highschool)
 ```
 
-```{r download-data-facebook}
+```{r data-facebook}
 # Large Facebook network
 LargeFacebook_edge <- read.csv("data/LargeFacebook_network_edge.csv", header = FALSE)
 LargeFacebook_att <- read.csv("data/LargeFacebook_network_att.csv", header = TRUE)
