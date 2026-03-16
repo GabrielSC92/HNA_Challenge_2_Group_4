@@ -1,8 +1,14 @@
 ---
-title: "Untitled"
+title: "Challenge Assignment 2: Social network analysis and modeling"
 author: "Gabriel Silva Cheinquer (4266390), Ege Basaran (8787433)"
 date: "`r Sys.Date()`"
 output:
+  pdf_document:
+    toc: true
+    number_sections: false
+    fig_width: 6
+    fig_height: 5
+    latex_engine: xelatex
   html_document:
     toc: true
     toc_float: true
@@ -12,12 +18,6 @@ output:
     code_folding: hide
     fig_width: 10
     fig_height: 6
-  pdf_document:
-    toc: true
-    number_sections: false
-    fig_width: 6
-    fig_height: 5
-    latex_engine: xelatex
 ---
 
 ```{r setup, include=FALSE}
@@ -30,8 +30,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 In addition to the Facebook network you have used in the Learning-based exercise, you will use the Highschool network here.
 
-[Download the “Highschool_network_att.csv”, “Highschool_network_att.csv”, and “LargeFacebook_network_att.csv”, and “LargeFacebook_network_edge.csv” from BrightSpace. Import the `.csv` data into `R` and build the two networks.]{.underline}
-
+Download the “Highschool_network_att.csv”, “Highschool_network_att.csv”, and “LargeFacebook_network_att.csv”, and “LargeFacebook_network_edge.csv” from BrightSpace. Import the `.csv` data into `R` and build the two networks.
 ```{r imports}
 library(igraph)
 library(RColorBrewer)
@@ -89,11 +88,10 @@ summary(LargeFacebook)
 plot(LargeFacebook)
 ```
 
-## Question 1 (3 points): 
+## Question 1 (3 points) 
 
--   [For both the High-school and Facebook networks, calculate the shortest path lengths between every pair of two nodes. How many percentage of nodes can be reached within 6 path lengths? Does “six degree of separation” apply to each network?]{.underline}
-
--   [Study the degree distribution of these two networks, are they similar? Then use degree distribution to explain the degree of separation you answered above.]{.underline}
+- For both the Highschool and Facebook networks, calculate the shortest path lengths between every pair of two nodes. How many percentage of nodes can be reached within 6 path lengths? Does “six degree of separation” apply to each network?
+- Study the degree distribution of these two networks, are they similar? Then use degree distribution to explain the degree of separation you answered above.
 
 You can calculate the shortest path lengths between every pair of two nodes using igraph package:
 
@@ -155,19 +153,11 @@ hist(dist_fb_vec,
      xlab="Shortest path length")
 ```
 
-**Highschool network:** ~98.6% of node pairs can be reached within 6 path lengths.
-- Most shortest paths are around 3–5 steps.
-- Very few exceed 6; maximum is around 7–8.
+We computed the proportion of node pairs that are reachable within 6 steps. For the Highschool network this comes out to about 98.6%, and for the Facebook network about 98.0%. In both cases the vast majority of shortest paths lie within 6 steps, so the six degrees of separation idea fits both networks well. In the histograms, most paths in the Highschool network sit around 3–5 steps, with very few beyond 6 and a maximum around 7–8. In the Facebook network, paths tend to be slightly shorter (around 3–4 steps), and almost every pair is reachable within 6 steps.
 
-**Facebook network:** ~98.0% of node pairs can be reached within 6 path lengths.
-- Most shortest paths are around 3–4 steps.
-- Almost all nodes are reachable within ≤6 steps.
+You can consider using a histogram with percentiles to study the shortest path lengths and the degree distribution:
 
-**Conclusion:** The six degrees of separation hypothesis holds for both networks, since the vast majority of node pairs can reach each other within 6 steps or fewer.
-
-You can consider to use histogram with percentile to study the shortest path lengths and the degree distribution:
-
-![One important stand of community detection algorithm is based on [***modularity***]{.underline}, which tries to maximize the difference between the actual number of edges in a community and the expected number of edges in the community. However, optimizing modularity in a network is NP-hard, therefore have to use heuristics.](images/clipboard-4108311466.png)
+![One important stand of community detection algorithm is based on **modularity**, which tries to maximize the difference between the actual number of edges in a community and the expected number of edges in the community. However, optimizing modularity in a network is NP-hard, therefore have to use heuristics.](images/clipboard-4108311466.png)
 
 ```{r degrees-separation-dist}
 deg_high <- degree(Highschool)
@@ -186,19 +176,19 @@ hist(deg_fb,
      xlab="Degree")
 ```
 
-## Degree Distribution
+## Degree distribution and shortest path lengths
 
-The degree distributions are quite different. In the Highschool network, the degree distribution is relatively narrow and moderately right-skewed: most nodes have between about 3 and 8 connections, and the highest degrees are around 15–17. These nodes have more connections than others but do not dominate the network strongly. In contrast, the Facebook network shows a highly right-skewed distribution where most nodes have few connections while a small number of nodes have high degrees (around 200). These highly connected nodes act as stronger hubs. Because such hubs connect many otherwise distant nodes, they reduce the shortest path lengths in the Facebook network and help explain why most node pairs can be reached within six steps.
+The two networks have quite different degree distributions. In the Highschool network, the distribution is relatively narrow and moderately right-skewed: most nodes have between about 3 and 8 connections, and the highest degrees are around 15–17. Those nodes have more connections than others but do not dominate the network. The Facebook network, by contrast, is highly right-skewed: most nodes have few connections, while a small number have very high degrees (around 200). Those highly connected nodes act as strong hubs.
 
-## Degree Distribution & Shortest Path Lengths
+This difference helps explain the path lengths we saw above. In the Facebook network, high-degree hubs create shortcuts across the network, so that many otherwise distant pairs are only a few steps apart. In the Highschool network, degrees are more evenly spread and hubs are weaker, so paths depend more on chains of intermediate nodes. Because that network is also small, most pairs are still reachable within six steps; in the larger Facebook network, the presence of hubs does a lot of the work in keeping typical path lengths short.
 
-More on the connection between degree dist. and shortest path lengths:
-The degree distribution helps explain the degree of separation observed earlier. In the Facebook network, high-degree hubs connect many nodes across the network, creating shortcuts that reduce the number of steps needed to connect two individuals. As a result, most nodes can be reached within six steps. In the Highschool network, degrees are more evenly distributed and hubs are weaker, so paths rely more on connections of intermediate nodes. Nevertheless, because the network is relatively small, most nodes are still reachable within six steps.
+## Question 2 (5 points) *(please submit your code along with your answer)*
 
-# Exercise 2
+1) Calculate the modularity of the Highschool network if community is merely identified by a) gender and b) residential hall, respectively.  
+2) Use the Louvain Community Detection to identify communities in the Highschool network. Compare the modularity value produced by the Louvain algorithm to those in 1), and explain the reasons for the differences.
 
 ```{r nodes-gender}
-#community by gender
+# community by gender
 genderCommunity <- Highschool_nodes$gender
 genderCommunity <- replace(genderCommunity, genderCommunity == "female", 1)
 genderCommunity <- replace(genderCommunity, genderCommunity == "male", 2)
@@ -244,22 +234,25 @@ plot(
 )
 ```
 
-## Modularity based on gender and residential hall:
+### Answer
 
-The modularity when communities are defined by gender is extremely low (≈0.00005). This indicates that friendships in the Highschool network are not strongly structured by gender, meaning male and female students are frequently connected to each other rather than forming separate groups.
+We compared three ways of defining communities on the Highschool network: by gender, by residential hall, and using the Louvain algorithm. The modularity values tell a clear story.
 
-When communities are defined by residential hall, the modularity is higher (≈0.176). This suggests that students are somewhat more likely to form friendships with others who live in the same residential hall. However, the value is still relatively moderate, meaning hall membership only partially explains the friendship structure.
+When we partition the network by gender, modularity is extremely low (about 0.00005). Friendships in this network are not organised along gender lines; male and female students are often connected to each other rather than forming separate groups. When we partition by residential hall, modularity is higher (about 0.176). Students are somewhat more likely to be friends with others in the same hall, so hall membership captures part of the structure—but only part, and the value remains moderate.
 
-## Louvain community detection
+The Louvain algorithm does much better, with modularity around 0.701. The reason is that gender and hall are fixed attributes we impose on the network, whereas Louvain groups nodes directly from their connection patterns and thus optimizes modularity. The communities it finds therefore align much more closely with how ties are actually distributed. In the plot we see densely connected clusters with relatively few links between them—likely friend circles, shared activities, or overlapping groups that are not neatly summarized by a single attribute like gender or hall. So in short: gender explains almost none of the structure, hall explains some of it, and Louvain recovers the strongest community structure because it uses the topology of the network itself.
 
-The Louvain algorithm produces a much higher modularity value (≈0.701). This indicates that the communities detected by Louvain align much more closely with the actual structure of the network.
+# Exercise 2
 
-The reason for this difference is that gender and residential hall are predefined attributes, while the Louvain algorithm optimizes modularity directly by grouping nodes based on their connection patterns. As a result, Louvain identifies communities that better reflect the underlying social structure of friendships rather than relying on a single external attribute.
+You might realize not every value of *p* can return you a small-world network that you are looking for. Then a question arises as how can one find the range of *p*. In the Figure 2 of Watts and Strogatz (1998), it explains how can one decide the range of *p* by looking at the dynamics between path length and clustering coefficient.
 
-The Louvain plot shows several densely connected clusters with relatively fewer connections between clusters. These clusters likely represent groups of students who interact frequently, such as friend circles, shared activities, or overlapping social groups, which are not perfectly captured by gender or residential hall alone.
+## Question 3 (4 points)
 
-## Key takeaways:
+1) Start with a regular network of size=300, nei=6, first reproduce the Figure 2 of Watts and Strogatz (1998). Then provide the range of *p* which can turn this regular network (size=300, nei=6) into a small-world network.  
+2) Do you need to rewire significant amount of connections to make the network small-world-like?  
+3) In the paper of Watts and Strogatz (1998), they pointed out that the value of *p* has two important implications:
 
-Gender explains almost none of the network structure(0.00005 modularity).
-Residential hall explains some of it(0.176 modularity).
-Louvain finds the strongest community structure because it optimizes modularity using the network topology itself(0.701 modularity).
+- "The idealized construction above reveals the key role of short cuts. It suggests that the small-world phenomenon might be common in sparse networks with many vertices, as even a tiny fraction of short cuts would suffice."
+- "Thus, infectious diseases are predicted to spread much more easily and quickly in a small world; the alarming and less obvious point is how few short cuts are needed to make the world small."
+
+Use your own words to explain these two implications. For the second implication, connect it with the spread of COVID.
