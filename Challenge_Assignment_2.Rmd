@@ -35,6 +35,8 @@ Download the “Highschool_network_att.csv”, “Highschool_network_att.csv”,
 library(igraph)
 library(RColorBrewer)
 library(visNetwork)
+library(ggplot2)
+library(dplyr)
 ```
 
 ```{r data-highschool}
@@ -256,3 +258,542 @@ You might realize not every value of *p* can return you a small-world network th
 - "Thus, infectious diseases are predicted to spread much more easily and quickly in a small world; the alarming and less obvious point is how few short cuts are needed to make the world small."
 
 Use your own words to explain these two implications. For the second implication, connect it with the spread of COVID.
+
+### Answer
+
+```{r}
+set.seed(123)
+
+# Regular network: size = 300, total degree = 6, so nei = 3 on each side
+g_regular <- sample_smallworld(dim = 1, size = 300, nei = 3, p = 0)
+
+C0 <- transitivity(g_regular, type = "global")
+L0 <- mean_distance(g_regular, directed = FALSE)
+
+p_values <- c(0, 10^seq(-4, 0, length.out = 20))
+
+results_q3 <- lapply(p_values, function(p) {
+  g <- sample_smallworld(dim = 1, size = 300, nei = 3, p = p)
+  
+  Cp <- transitivity(g, type = "global")
+  Lp <- mean_distance(g, directed = FALSE)
+  
+  data.frame(
+    p = p,
+    clustering = Cp,
+    path_length = Lp,
+    clustering_norm = Cp / C0,
+    path_length_norm = Lp / L0
+  )
+}) %>%
+  bind_rows()
+
+results_q3
+```
+
+```{r}
+ggplot(results_q3, aes(x = p)) +
+  geom_line(aes(y = clustering_norm, color = "C(p)/C(0)"), linewidth = 1) +
+  geom_line(aes(y = path_length_norm, color = "L(p)/L(0)"), linewidth = 1) +
+  scale_x_log10() +
+  labs(
+    title = "Normalized clustering coefficient and path length across rewiring probabilities",
+    x = "Rewiring probability p (log scale)",
+    y = "Normalized value",
+    color = ""
+  ) +
+  theme_minimal()
+```
+
+```{r}
+small_world_range <- results_q3 %>%
+  filter(path_length_norm < 0.5, clustering_norm > 0.5)
+
+small_world_range
+range(small_world_range$p)
+```
+
+To reproduce Figure 2 from Watts and Strogatz (1998), we generated a regular network with size = 300 and degree = 6, and gradually increased the rewiring probability p. For each value of p, we calculated the clustering coefficient and average path length and normalized both relative to the original regular network. This allows us to observe how local clustering and global distances change as shortcuts are added.
+
+The results show that the normalized average path length decreases quickly even for very small values of p, while the normalized clustering coefficient remains high over a wider range. This means that only a few shortcut connections are enough to make nodes much closer to each other without strongly changing the local structure. This pattern matches the behaviour of small-world networks described by Watts and Strogatz (1998).
+
+Based on our simulation, the small-world region appears approximately between p = 0.003 and p = 0.089. In this range, clustering is still relatively high while path length is already much shorter than in the regular network.
+
+These results show that only limited rewiring is needed to create a small-world network. A small number of long-range connections can strongly reduce global distances while keeping local neighbourhood structure mostly unchanged.
+
+One implication is that the small-world property can easily appear in many real-world networks without requiring the network to become random. Even a few bridging ties can connect distant parts of the network efficiently.
+
+Another implication is that spreading processes become faster in small-world networks. Shortcut connections link otherwise distant groups, allowing diseases, information, or behaviours to spread quickly. For example, during COVID-19, long-distance travel and large gatherings acted as shortcut connections between communities and accelerated transmission across regions.
+
+Overall, the results confirm that small-world structure emerges at intermediate rewiring levels, consistent with Watts and Strogatz (1998).
+
+# Exercise 3
+
+## Question 4 (8 points)
+
+Assume you want to promote a vegetarian recipe in the high school network (same
+as the “Highschool_network_att.csv” and “Highschool_network_att.csv” used in
+Question 1).
+
+Each student in the network has an adoption threshold, which is listed in
+“Highschool_network_edge.csv” under the column Threshold. A student adopts the
+recipe only when the proportion of their friends who have already adopted it reaches
+or exceeds their threshold. For example, student S1 has a threshold of 0.51. This
+means S1 will adopt the vegetarian recipe only if at least 51% of her friends have
+adopted it; otherwise, she remains inactive.
+
+Your goal is to identify the best initial seed set for promoting the vegetarian recipe in
+this network.
+
+Assume you have a budget to seed 5 students initially:
+1) Use greedy algorithm to find out 5 seeds and provide their IDs;
+2) Use degree heuristics to find out 5 seeds and provide their IDs;
+3) Use betweenness heuristics to find out 5 seeds and provide their IDs;
+4) Compare the contagion outcome, discuss which strategy works the best in this
+network and why.
+
+### Answer
+
+```{r}
+threshold <- Highschool_att$Threshold
+```
+
+```{r}
+calculate_adoptedNei <- function(node, node_status, each_neighbors) {
+  mean(node_status[each_neighbors[[node]]] == 1)
+}
+```
+
+```{r}
+ThModel <- function(node_seed, network, threshold) {
+  
+  adj_matrix <- as.matrix(as_adjacency_matrix(network, type = "both"))
+  
+  each_neighbors <- which(adj_matrix > 0, arr.ind = TRUE)
+  each_neighbors <- split(each_neighbors[,2], each_neighbors[,1])
+  
+  nNode <- vcount(network)
+  
+  node_status <- rep(0, nNode)
+  neighbour_status <- rep(0, nNode)
+  
+  new_infected <- list()
+  day_total_infected <- rep(0, 28)
+  
+  # Day 1
+  day <- 1
+  node_status[node_seed] <- 1
+  
+  new_infected[[day]] <- node_seed
+  day_total_infected[day] <- sum(node_status)
+  
+  # Days 2–28
+  for (day in 2:28) {
+    
+    NotAdopted <- which(node_status == 0)
+    Adopted <- which(node_status == 1)
+    
+    neighbour_status[NotAdopted] <- unlist(
+      lapply(NotAdopted, calculate_adoptedNei,
+             node_status, each_neighbors)
+    )
+    
+    new_infected[[day]] <- setdiff(
+      which(neighbour_status >= threshold),
+      Adopted
+    )
+    
+    node_status[new_infected[[day]]] <- 1
+    
+    day_total_infected[day] <- sum(node_status)
+  }
+  
+  return(list(day_total_infected, new_infected))
+}
+```
+
+```{r}
+greedy_ThM <- function(network, threshold, k) {
+  
+  nNode <- vcount(network)
+  SeedCan <- 1:nNode
+  Seedset <- c()
+  
+  for (s in 1:k) {
+    
+    best_seed <- -1
+    best_spread <- -Inf
+    
+    for (candidate in SeedCan) {
+      
+      trial_set <- c(Seedset, candidate)
+      spread <- ThModel(trial_set, network, threshold)[[1]]
+      
+      if (sum(spread) > sum(best_spread)) {
+        best_seed <- candidate
+        best_spread <- spread
+      }
+    }
+    
+    Seedset <- c(Seedset, best_seed)
+    SeedCan <- setdiff(SeedCan, Seedset)
+  }
+  
+  Seedset
+}
+```
+
+```{r}
+greedy_ThM5 <- greedy_ThM(Highschool, threshold, 5)
+
+V(Highschool)$name[greedy_ThM5]
+```
+
+```{r}
+ThM_greedy <- ThModel(greedy_ThM5, Highschool, threshold)
+
+final_greedy_active <- max(ThM_greedy[[1]])
+final_greedy_active
+```
+
+```{r}
+deg <- degree(Highschool)
+
+degree_5 <- order(deg, decreasing = TRUE)[1:5]
+
+V(Highschool)$name[degree_5]
+```
+
+```{r}
+ThM_degree <- ThModel(degree_5, Highschool, threshold)
+
+final_degree_active <- max(ThM_degree[[1]])
+final_degree_active
+```
+
+```{r}
+btw <- betweenness(Highschool, directed = FALSE, normalized = TRUE)
+
+betweenness_5 <- order(btw, decreasing = TRUE)[1:5]
+
+V(Highschool)$name[betweenness_5]
+```
+
+```{r}
+ThM_betweenness <- ThModel(betweenness_5, Highschool, threshold)
+
+final_betweenness_active <- max(ThM_betweenness[[1]])
+final_betweenness_active
+```
+
+```{r}
+comparison_q4 <- data.frame(
+  method = c("Greedy", "Degree heuristic", "Betweenness heuristic"),
+  seeds = c(
+    paste(V(Highschool)$name[greedy_ThM5], collapse = ", "),
+    paste(V(Highschool)$name[degree_5], collapse = ", "),
+    paste(V(Highschool)$name[betweenness_5], collapse = ", ")
+  ),
+  activated_nodes = c(
+    final_greedy_active,
+    final_degree_active,
+    final_betweenness_active
+  )
+)
+
+comparison_q4
+```
+
+```{r}
+library(tidyr)
+
+history_df <- data.frame(
+  Day = 1:28,
+  Greedy = ThM_greedy[[1]],
+  Degree = ThM_degree[[1]],
+  Betweenness = ThM_betweenness[[1]]
+)
+
+history_long <- pivot_longer(
+  history_df,
+  cols = c("Greedy","Degree","Betweenness"),
+  names_to = "Method",
+  values_to = "TotalActive"
+)
+
+ggplot(history_long,
+       aes(x = Day, y = TotalActive, color = Method)) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Threshold diffusion outcome by seeding strategy",
+    x = "Day",
+    y = "Total active students"
+  ) +
+  theme_minimal()
+```
+
+We analysed the spread of a vegetarian recipe in the Highschool network using a threshold model. In this model, a student adopts the recipe only when the proportion of their friends who already adopted it reaches their threshold. This means adoption depends on reinforcement from multiple neighbours (complex contagion).
+
+1) Greedy algorithm seeds
+
+The greedy algorithm selected the following 5 seeds:
+
+S77, S99, S92, S20, S119
+
+This strategy activated 65 students in total.
+
+2) Degree heuristic seeds
+
+The degree heuristic selected:
+
+S54, S20, S110, S64, S96
+
+This strategy activated 18 students.
+
+3) Betweenness heuristic seeds
+
+The betweenness heuristic selected:
+
+S37, S4, S96, S24, S70
+
+This strategy activated 34 students.
+
+4) Comparison of strategies
+
+The greedy strategy clearly performs best:
+
+Greedy: 65 activated students
+Betweenness: 34 activated students
+Degree: 18 activated students
+
+The plot also shows that the greedy strategy continues spreading for more steps and reaches the highest final adoption level.
+
+The greedy algorithm works best because it selects seeds that increase the spread step by step across the network. In threshold diffusion, this is important since adoption requires reinforcement from several neighbours.
+
+The degree heuristic performs worst. High-degree students have many connections, but they may be located close to each other, so their influence overlaps and does not spread widely across the network.
+
+The betweenness heuristic performs better than degree because it selects students who connect different parts of the network. However, it still does not consider how seeds work together as a group.
+
+Overall, the greedy algorithm produces the largest cascade because it selects seeds that are better distributed across the network and create stronger reinforcement effects.
+
+## Question 5 (8 points)
+
+The seeding strategies in Question 4 assume access to complete network
+information. In real-world settings, however, such information is often unavailable
+because collecting full network data is costly and difficult. Without knowing the exact
+degree, betweenness, or other centrality measures of each node, it is not possible to
+directly implement strategies such as degree-based heuristics, betweenness-based
+heuristics, or greedy seeding.
+
+To address this constraint, researchers have proposed practical seeding methods
+inspired by the Friendship Paradox. One such method is the one-hop strategy: first
+sample individuals uniformly at random from the network, then ask each sampled
+individual to nominate one person they know, and finally use the nominated
+individuals as the initial seeds.
+
+Answer the following questions:
+
+1) Explain how the one-hop strategy is related to the Friendship Paradox.
+2) Implement the one-hop strategy on the high school network to identify 5
+seeds. You will observe that the resulting seed set may vary from run to run.
+Explain the reason for this variation.
+3) Since the one-hop seed set is not fixed, propose an appropriate approach to
+compare its contagion performance against a random seeding strategy.
+4) Implement the approach proposed in part (3) and compare the contagion
+outcomes of the two strategies in this network.
+5) Conclude the strengths and limitations of the one-hop strategy.
+
+### Answer
+
+```{r}
+one_hop_seed <- function(network, k = 5) {
+  
+  nNode <- vcount(network)
+  final_seeds <- c()
+  
+  while (length(final_seeds) < k) {
+    
+    # sample one student uniformly at random
+    sampled_node <- sample(1:nNode, 1)
+    
+    # get neighbors of sampled student
+    neigh <- neighbors(network, sampled_node)
+    
+    # only proceed if the sampled node has at least one neighbor
+    if (length(neigh) > 0) {
+      nominated <- sample(neigh, 1)
+      final_seeds <- unique(c(final_seeds, nominated))
+    }
+  }
+  
+  final_seeds[1:k]
+}
+```
+
+```{r}
+random_seed <- function(network, k = 5) {
+  sample(1:vcount(network), k, replace = FALSE)
+}
+```
+
+```{r}
+set.seed(123)
+
+onehop_5 <- one_hop_seed(Highschool, 5)
+
+onehop_5
+V(Highschool)$name[onehop_5]
+```
+
+```{r}
+ThM_onehop <- ThModel(onehop_5, Highschool, threshold)
+
+final_onehop_active <- max(ThM_onehop[[1]])
+final_onehop_active
+```
+
+```{r}
+set.seed(1)
+V(Highschool)$name[one_hop_seed(Highschool, 5)]
+
+set.seed(2)
+V(Highschool)$name[one_hop_seed(Highschool, 5)]
+
+set.seed(3)
+V(Highschool)$name[one_hop_seed(Highschool, 5)]
+```
+
+```{r}
+evaluate_strategy <- function(network, threshold, strategy_fun, k = 5, n_sim = 200) {
+  
+  results <- data.frame(
+    run = 1:n_sim,
+    activated_nodes = numeric(n_sim)
+  )
+  
+  seed_list <- vector("list", n_sim)
+  
+  for (i in 1:n_sim) {
+    seeds <- strategy_fun(network, k)
+    seed_list[[i]] <- V(network)$name[seeds]
+    
+    outcome <- ThModel(seeds, network, threshold)
+    results$activated_nodes[i] <- max(outcome[[1]])
+  }
+  
+  list(
+    results = results,
+    seeds = seed_list
+  )
+}
+```
+
+```{r}
+set.seed(123)
+
+onehop_eval <- evaluate_strategy(
+  network = Highschool,
+  threshold = threshold,
+  strategy_fun = one_hop_seed,
+  k = 5,
+  n_sim = 200
+)
+
+random_eval <- evaluate_strategy(
+  network = Highschool,
+  threshold = threshold,
+  strategy_fun = random_seed,
+  k = 5,
+  n_sim = 200
+)
+```
+
+```{r}
+summary_comparison_q5 <- data.frame(
+  method = c("One-hop", "Random"),
+  mean_activated = c(
+    mean(onehop_eval$results$activated_nodes),
+    mean(random_eval$results$activated_nodes)
+  ),
+  median_activated = c(
+    median(onehop_eval$results$activated_nodes),
+    median(random_eval$results$activated_nodes)
+  ),
+  sd_activated = c(
+    sd(onehop_eval$results$activated_nodes),
+    sd(random_eval$results$activated_nodes)
+  ),
+  min_activated = c(
+    min(onehop_eval$results$activated_nodes),
+    min(random_eval$results$activated_nodes)
+  ),
+  max_activated = c(
+    max(onehop_eval$results$activated_nodes),
+    max(random_eval$results$activated_nodes)
+  )
+)
+
+summary_comparison_q5
+```
+
+```{r}
+t.test(
+  onehop_eval$results$activated_nodes,
+  random_eval$results$activated_nodes
+)
+```
+
+```{r}
+comparison_plot_q5 <- rbind(
+  data.frame(method = "One-hop", activated_nodes = onehop_eval$results$activated_nodes),
+  data.frame(method = "Random", activated_nodes = random_eval$results$activated_nodes)
+)
+
+ggplot(comparison_plot_q5, aes(x = method, y = activated_nodes, fill = method)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(
+    title = "Threshold diffusion outcome: one-hop vs random seeding",
+    x = "",
+    y = "Final number of activated students"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r}
+ggplot(comparison_plot_q5, aes(x = activated_nodes, color = method, fill = method)) +
+  geom_density(alpha = 0.2) +
+  labs(
+    title = "Distribution of final activated students",
+    x = "Final number of activated students",
+    y = "Density"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+example_onehop_seeds <- V(Highschool)$name[onehop_5]
+example_onehop_seeds
+```
+
+The one-hop strategy is based on the Friendship Paradox, which states that your friends usually have more friends than you do. In the one-hop strategy, we first select students randomly and then ask each of them to nominate one friend. Since highly connected students appear more often in friendship lists, they are more likely to be selected as seeds than with pure random sampling.
+
+Using the one-hop strategy, one example seed set was:
+
+S37, S95, S34, S116, S73
+
+This seed set activated 13 students in that run.
+
+However, the selected seeds change across runs because the strategy includes randomness both when choosing initial students and when selecting their nominated friends. Therefore, different runs produce different contagion outcomes.
+
+To compare one-hop with random seeding fairly, both strategies were repeated many times and their average performance was compared instead of relying on a single run.
+
+We repeated both strategies 200 times. The one-hop strategy activated on average 19.88 students, while random seeding activated 18.15 students. The median values were 18 and 16 respectively. The maximum spread was also slightly higher for one-hop (60 vs 57).
+
+A Welch two-sample t-test gave a p-value of 0.04788, which shows that the difference between the two strategies is statistically significant at the 5% level. This means one-hop performs slightly better than random seeding in this network.
+
+The advantage of the one-hop strategy is that it does not require full network information but still tends to select better-connected students. This makes it useful when centrality measures cannot be calculated.
+
+However, the strategy still depends on randomness and does not optimise seed placement like the greedy algorithm. In Question 4, greedy seeding activated 65 students, which is much higher than the one-hop average. This shows that while one-hop improves over random selection, it is less effective than strategies that use complete network structure.
+
+Overall, the one-hop strategy is a practical method when network data is limited. It performs better than random seeding on average, but it cannot match the performance of greedy seeding in threshold diffusion settings.
